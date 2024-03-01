@@ -157,17 +157,6 @@ function g = egrad(Q)
     g(:,:,2) = g(:,:,2) + g_diag_Z*diag(signs);
 
 
-% For checking that the gradient is correct - to be removed
-%     gradfun = approxgradientFD(problem);
-% %     temp1 = norm(gradfun(V),'f')
-%     temp1 = gradfun(Q);
-%     temp2 = problem.M.proj(Q,g);
-% %     temp1 - temp2;
-% 
-%     norm(temp1(:,:,2) - temp2(:,:,2),'f') / norm(temp2(:,:,2),'f')
-% 
-% %     keyboard
-
 end
 
 function H = ehess(Q, d)

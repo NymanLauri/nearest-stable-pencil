@@ -53,7 +53,7 @@ problem.cost = @cost;
 % The code uses the Euclidean gradient. Projection to 
 % the tangent space of U(n) is handled automatically (see 
 % stiefelcomplexfactory documentation)
-% problem.egrad = @egrad;
+problem.egrad = @egrad;
 % Euclidean Hessian. Projection is handled automatically.
 % problem.ehess = @ehess;
 
@@ -124,37 +124,19 @@ function g = egrad(Q)
     g(:,:,1) = 2* L1 * M11' + 2* L0 * M01';
     g(:,:,2) = 2* M12' * L1 + 2* M02' * L0;
 
-    signs = real(diag(T).*conj(diag(S))) < 0;
-
-    alphas = (abs(diag(T)).^2 + abs(diag(S)).^2)./(2*real(diag(S).*conj(diag(T))));
-    lambdas = alphas + sqrt(alphas.^2-1);
+    signs = abs(diag(S)) > abs(diag(T));
     
-    % To avoid 0/0 errors when alpha = 1. The contribution from these rows
-    % and columns will be omitted at the end anyway.
-    alphas = signs.*alphas;
-
     g_diag_Q = ...
-        diag(diag(T).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(S)-alphas.*(diag(T))))*M01'+...
-        diag(diag(S).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(T)-alphas.*(diag(S))))*M11';
+        diag((abs(diag(S)) - abs(diag(T))).*diag(S)./abs(diag(S)))*M01'-...
+        diag((abs(diag(S)) - abs(diag(T))).*diag(T)./abs(diag(T)))*M11';
 
     g_diag_Z = ...
-        M02'*diag(diag(T).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(S)-alphas.*(diag(T))))+...
-        M12'*diag(diag(S).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(T)-alphas.*(diag(S))));
+        M02'*diag((abs(diag(S)) - abs(diag(T))).*diag(S)./abs(diag(S)))-...
+        M12'*diag((abs(diag(S)) - abs(diag(T))).*diag(T)./abs(diag(T)));
 
     g(:,:,1) = g(:,:,1) + diag(signs)*g_diag_Q;
     g(:,:,2) = g(:,:,2) + g_diag_Z*diag(signs);
 
-
-% For checking that the gradient is correct - to be removed
-%     gradfun = approxgradientFD(problem);
-% %     temp1 = norm(gradfun(V),'f')
-%     temp1 = gradfun(Q);
-%     temp2 = problem.M.proj(Q,g);
-% %     temp1 - temp2;
-% 
-%     norm(temp1(:,:,2) - temp2(:,:,2),'f') / norm(temp2(:,:,2),'f')
-% 
-% %     keyboard
 
 end
 
