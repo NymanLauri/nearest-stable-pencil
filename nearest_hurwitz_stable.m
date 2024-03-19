@@ -83,10 +83,7 @@ if any(abs(lambdas + 1) < 1e-6)
     keyboard
 end
 
-diags_T = 1./(1-lambdas.^2).*(real(diag(T)) - lambdas.*real(diag(S)) + 1i*(imag(diag(T))- lambdas.*imag(diag(S))));
-diags_S = 1./(1-lambdas.^2).*(real(diag(S)) - lambdas.*real(diag(T)) + 1i*(imag(diag(S))- lambdas.*imag(diag(T))));
-T = triu(T,1) + diag(diags_T);
-S = triu(S,1) + diag(diags_S);
+[S, T] = proj(S, T);
 
 T = Q(:,:,1)'*T*Q(:,:,2)';
 S = Q(:,:,1)'*S*Q(:,:,2)';
@@ -129,33 +126,12 @@ function g = egrad(Q)
     T = Q1*B*Q2;
     S = Q1*A*Q2;
     
-    L1 = tril(T,-1);
-    L0 = tril(S,-1);
+    [PS, PT] = proj(S, T);
 
     g = zeros(size(Q));
-    g(:,:,1) = 2* L1 * M11' + 2* L0 * M01';
-    g(:,:,2) = 2* M12' * L1 + 2* M02' * L0;
 
-    signs = real(diag(T).*conj(diag(S))) < 0;
-
-    alphas = (abs(diag(T)).^2 + abs(diag(S)).^2)./(2*real(diag(S).*conj(diag(T))));
-    lambdas = alphas + sqrt(alphas.^2-1);
-    
-    % To avoid 0/0 errors when alpha = 1. The contribution from these rows
-    % and columns will be omitted at the end anyway.
-    alphas = signs.*alphas;
-
-    g_diag_Q = ...
-        diag(diag(T).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(S)-alphas.*(diag(T))))*M01'+...
-        diag(diag(S).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(T)-alphas.*(diag(S))))*M11';
-
-    g_diag_Z = ...
-        M02'*diag(diag(T).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(S)-alphas.*(diag(T))))+...
-        M12'*diag(diag(S).*lambdas + (1+alphas./(sqrt(alphas.^2-1))).*(diag(T)-alphas.*(diag(S))));
-
-    g(:,:,1) = g(:,:,1) + diag(signs)*g_diag_Q;
-    g(:,:,2) = g(:,:,2) + g_diag_Z*diag(signs);
-
+    g(:,:,1) = 2* (T - PT) * M11' + 2* (S - PS) * M01';
+    g(:,:,2) = 2* M12' * (T - PT) + 2* M02' * (S - PS);
 
 end
 
@@ -163,6 +139,19 @@ function H = ehess(Q, d)
 
     % not implemented yet
 
+end
+
+function [PS, PT] = proj(S, T)
+
+    alphas = (abs(diag(T)).^2 + abs(diag(S)).^2) ./...
+    (2*(real(diag(T).*conj(diag(S)))));
+
+    signs = real(diag(T).*conj(diag(S))) < 0;
+    lambdas = signs.*(alphas + sqrt(alphas.^2 - 1));
+
+    PS = triu(S,1) + diag(1./(1-lambdas.^2).* (diag(S) - lambdas.*diag(T)));
+    PT = triu(T,1) + diag(1./(1-lambdas.^2).* (diag(T) - lambdas.*diag(S)));
+    
 end
 
 end

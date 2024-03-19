@@ -72,13 +72,7 @@ time_seconds = infotable.time;
 T = Q(:,:,1)*B*Q(:,:,2);
 S = Q(:,:,1)*A*Q(:,:,2);
 
-signs = abs(diag(S)) > abs(diag(T));
-
-diags_T = 1/2*signs.*(abs(diag(S)) + abs(diag(T))).*(diag(T)./abs(diag(T))) + ~signs.*diag(T);
-diags_S = 1/2*signs.*(abs(diag(S)) + abs(diag(T))).*(diag(S)./abs(diag(S))) + ~signs.*diag(S);
-
-T = triu(T,1) + diag(diags_T);
-S = triu(S,1) + diag(diags_S);
+[S, T] = proj(S, T);
 
 T = Q(:,:,1)'*T*Q(:,:,2)';
 S = Q(:,:,1)'*S*Q(:,:,2)';
@@ -117,25 +111,12 @@ function g = egrad(Q)
     T = Q1*B*Q2;
     S = Q1*A*Q2;
     
-    L1 = tril(T,-1);
-    L0 = tril(S,-1);
+    [PS, PT] = proj(S, T);
 
     g = zeros(size(Q));
-    g(:,:,1) = 2* L1 * M11' + 2* L0 * M01';
-    g(:,:,2) = 2* M12' * L1 + 2* M02' * L0;
 
-    signs = abs(diag(S)) > abs(diag(T));
-    
-    g_diag_Q = ...
-        diag((abs(diag(S)) - abs(diag(T))).*diag(S)./abs(diag(S)))*M01'-...
-        diag((abs(diag(S)) - abs(diag(T))).*diag(T)./abs(diag(T)))*M11';
-
-    g_diag_Z = ...
-        M02'*diag((abs(diag(S)) - abs(diag(T))).*diag(S)./abs(diag(S)))-...
-        M12'*diag((abs(diag(S)) - abs(diag(T))).*diag(T)./abs(diag(T)));
-
-    g(:,:,1) = g(:,:,1) + diag(signs)*g_diag_Q;
-    g(:,:,2) = g(:,:,2) + g_diag_Z*diag(signs);
+    g(:,:,1) = 2* (T - PT) * M11' + 2* (S - PS) * M01';
+    g(:,:,2) = 2* M12' * (T - PT) + 2* M02' * (S - PS);
 
 
 end
@@ -144,6 +125,18 @@ function H = ehess(Q, d)
 
     % not implemented yet
 
+end
+
+function [PS, PT] = proj(S, T)
+
+    signs = abs(diag(S)) > abs(diag(T));
+    
+    diags_T = 1/2*signs.*(abs(diag(S)) + abs(diag(T))).*(diag(T)./abs(diag(T))) + ~signs.*diag(T);
+    diags_S = 1/2*signs.*(abs(diag(S)) + abs(diag(T))).*(diag(S)./abs(diag(S))) + ~signs.*diag(S);
+    
+    PT = triu(T,1) + diag(diags_T);
+    PS = triu(S,1) + diag(diags_S);
+    
 end
 
 end
