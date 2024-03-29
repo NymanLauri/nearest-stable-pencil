@@ -55,7 +55,7 @@ problem.cost = @cost;
 % stiefelcomplexfactory documentation)
 problem.egrad = @egrad;
 % Euclidean Hessian. Projection is handled automatically.
-% problem.ehess = @ehess;
+problem.ehess = @ehess;
 
 options.tolgradnorm = 1e-10;
 options.maxiter = maxiter;
@@ -123,7 +123,66 @@ end
 
 function H = ehess(Q, d)
 
-    % not implemented yet
+    Q1 = Q(:,:,1);
+    Q2 = Q(:,:,2);
+    
+    d1 = d(:,:,1);
+    d2 = d(:,:,2);
+
+    M11 = B*Q2;
+    M01 = A*Q2;
+    
+    M12 = Q1*B;
+    M02 = Q1*A;
+    
+    T = Q1*B*Q2;
+    S = Q1*A*Q2;
+
+    dM11 = d1*M11;
+    dM01 = d1*M01;
+    M12d = M12*d2;
+    M02d = M02*d2;
+    
+    signs = abs(diag(S)) > abs(diag(T));
+
+    [PS, PT] = proj(S, T);
+    
+    H0 = diag(dM01 + M02d) + (real( conj(diag(T)) .* diag(dM11 + M12d) )) ...
+        ./(abs(diag(S)).* abs(diag(T))) .* diag(S) - (real(conj(diag(S)) ...
+        .* diag(dM01 + M02d) ) .* abs(diag(T)))./(abs(diag(S)).^3) ...
+        .* diag(S) + abs(diag(T))./abs(diag(S)) .* diag(dM01 + M02d);
+    H0 = 1/2*diag(H0);
+
+    H1 = diag(dM11 + M12d) + (real( conj(diag(S)) .* diag(dM01 + M02d) )) ...
+        ./(abs(diag(S)).* abs(diag(T))) .* diag(T) - (real(conj(diag(T)) ...
+        .* diag(dM11 + M12d) ) .* abs(diag(S)))./(abs(diag(T)).^3) ...
+        .* diag(T) + abs(diag(S))./abs(diag(T)) .* diag(dM11 + M12d); 
+    H1 = 1/2*diag(H1);
+
+    L = tril(ones(size(Q1)),-1);
+
+    L1 = L.*(dM11 + M12d);
+    L0 = L.*(dM01 + M02d);
+    
+    H = zeros(size(Q));
+
+    H(:,:,1) = L1 * M11' + (T - PT) * d2' * B' ...
+             + L0 * M01' + (S - PS) * d2' * A';
+
+    H(:,:,2) = M12' * L1 + B' * d1' * (T - PT) ...
+             + M02' * L0 + A' * d1' * (S - PS);
+    
+    H(:,:,1) = H(:,:,1) ... 
+        + diag(signs.*diag(dM01 + M02d - H0)) * M01' ...
+        + diag(signs.*diag(dM11 + M12d - H1)) * M11';
+
+    H(:,:,2) = H(:,:,2) ... 
+        + M02' * diag(signs.*diag(dM01 + M02d - H0)) ...
+        + M12' * diag(signs.*diag(dM11 + M12d - H1));
+
+
+    % Scale by the omitted factor 2
+    H = 2*H;
 
 end
 
