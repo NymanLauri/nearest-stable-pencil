@@ -49,6 +49,7 @@ A = A / P_norm;
 B = B / P_norm;
 
 problem.M = stiefelcomplexfactory(n, n, 2);
+
 problem.cost = @cost;
 % The code uses the Euclidean gradient. Projection to 
 % the tangent space of U(n) is handled automatically (see 
@@ -76,7 +77,9 @@ alphas = (abs(diag(T)).^2 + abs(diag(S)).^2) ./...
     (2*(real(diag(T).*conj(diag(S))) ));
 
 signs = real(diag(T).*conj(diag(S))) < 0;
-lambdas = signs.*(alphas + sqrt(alphas.^2 - 1));
+lambdas = 1./(alphas - sqrt(abs(alphas).^2-1));
+lambdas(find(~signs)) = 0;
+
 
 % The case lambda = -1 should be dealt with separately.
 if any(abs(lambdas + 1) < 1e-6)
@@ -107,9 +110,11 @@ function f = cost(Q)
     (2*(real(diag(T).*conj(diag(S)))));
 
     signs = real(diag(T).*conj(diag(S))) < 0;
-    lambdas = signs.*(alphas + sqrt(alphas.^2 - 1));
+    lambdas = 1./(alphas - sqrt(abs(alphas).^2-1));
+    lambdas(find(~signs)) = 0;
 
     f = norm(tril(T,-1),'fro')^2 + norm(tril(S,-1),'fro')^2 + real(diag(T).*conj(diag(S))).'*lambdas;
+
 end
 
 function g = egrad(Q)
@@ -161,12 +166,14 @@ function H = ehess(Q, d)
     (2*(real(diag(T).*conj(diag(S)))));
 
     signs = real(diag(T).*conj(diag(S))) < 0;
-    lambdas = signs.*(alphas + sqrt(alphas.^2 - 1));
+    lambdas = 1./(alphas - sqrt(abs(alphas).^2-1));
+    lambdas(find(~signs)) = 0;
 
     D_lambdas = ...
-        (1 + alphas./sqrt(alphas.^2 - 1)).*((real(conj(diag(S)).*diag(dM01 + M02d)) + real(conj(diag(T)).*diag(dM11 + M12d))) ...
+        (1 + alphas./(sqrt(abs(alphas).^2-1))).*((real(conj(diag(S)).*diag(dM01 + M02d)) + real(conj(diag(T)).*diag(dM11 + M12d))) ...
         ./(real(conj(diag(S)).*diag(T))) - 1/2*(abs(diag(S)).^2 + abs(diag(T)).^2)./real(conj(diag(S)).*diag(T)).^2 ...
         .*(real(conj(diag(T)).*diag(dM01 + M02d)) + real(conj(diag(S)).*diag(dM11 + M12d))) );
+    D_lambdas(find(~signs)) = 0;
 
     [PS, PT] = proj(S, T);
     
@@ -205,6 +212,10 @@ function H = ehess(Q, d)
     % Scale by the omitted factor 2
     H = 2*H;
 
+    if any(isnan(H))
+        keyboard
+    end
+
 end
 
 function [PS, PT] = proj(S, T)
@@ -213,11 +224,12 @@ function [PS, PT] = proj(S, T)
     (2*(real(diag(T).*conj(diag(S)))));
 
     signs = real(diag(T).*conj(diag(S))) < 0;
-    lambdas = signs.*(alphas + sqrt(alphas.^2 - 1));
+    lambdas = 1./(alphas - sqrt(abs(alphas).^2-1));
+    lambdas(find(~signs)) = 0;
 
     PS = triu(S,1) + diag(1./(1-lambdas.^2).* (diag(S) - lambdas.*diag(T)));
     PT = triu(T,1) + diag(1./(1-lambdas.^2).* (diag(T) - lambdas.*diag(S)));
-    
+
 end
 
 end
